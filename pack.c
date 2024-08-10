@@ -43,6 +43,7 @@ size_t pack_pack ( void *p_buffer, const char *restrict format, ... )
             switch ( format[read] )
             {
 
+                // Length
                 case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
 
                     // Parse the quantity of values
@@ -51,6 +52,7 @@ size_t pack_pack ( void *p_buffer, const char *restrict format, ... )
                     // Continue reading format specifiers
                     done_reading_format_specifier_length: goto continue_parsing_format_specifier;
                 
+                // Float
                 case 'f':
 
                     // Increment the read index
@@ -71,6 +73,7 @@ size_t pack_pack ( void *p_buffer, const char *restrict format, ... )
                     // Done
                     break;
 
+                // Integer
                 case 'i':
 
                     // Increment the read index
@@ -99,6 +102,14 @@ size_t pack_pack ( void *p_buffer, const char *restrict format, ... )
                     // Done
                     break;
 
+                // String (maximum 65535)
+                case 's': 
+
+                    // Increment the read index
+                    read++;
+
+                    // Write the string
+                    goto write_str;
                 default:
 
                     // Done
@@ -242,7 +253,7 @@ size_t pack_pack ( void *p_buffer, const char *restrict format, ... )
         goto parse_format_specifier;
     }
 
-    // This branch writes f32's 
+    // This branch writes f32s 
     write_f32:
     {
 
@@ -269,8 +280,8 @@ size_t pack_pack ( void *p_buffer, const char *restrict format, ... )
         // Continue
         goto parse_format_specifier;
     }
-
-    // This branch writes f64's 
+    
+    // This branch writes f64s
     write_f64:
     {
 
@@ -298,6 +309,44 @@ size_t pack_pack ( void *p_buffer, const char *restrict format, ... )
         goto parse_format_specifier;
     }
 
+    // This branch writes strings 
+    write_str:
+    {
+
+        // Iterate through each variadic argument
+        for (size_t i = 0; i < format_specifier_length; i++)
+        {
+
+            // Initialized data
+            const char *s = va_arg(list, char *);
+            size_t len = strlen(s) + 1;
+
+            // Error check
+            if ( len > USHRT_MAX - 1 ) return 0;
+
+            // Store the length
+            *((unsigned short *)p_buffer) = (unsigned short) len;
+
+            // Update the buffer and written byte counter
+            p_buffer += sizeof(unsigned short), written += sizeof(unsigned short);
+            
+            // Store the value
+            memcpy(p_buffer, s, len);
+
+            // Update the buffer and written byte counter
+            p_buffer += len, written += len;
+        }
+
+        // Reset the format specifier length
+        format_specifier_length = 1;
+        
+        // Update the read index
+        read += 1;
+
+        // Continue
+        goto parse_format_specifier;
+    }
+    
     // Error handling
     {
 

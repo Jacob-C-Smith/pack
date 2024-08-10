@@ -16,6 +16,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include <limits.h>
 
 // Platform dependent macros
 #ifdef _WIN64
